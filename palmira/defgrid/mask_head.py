@@ -14,9 +14,10 @@ from detectron2.utils.events import get_event_storage
 from torch import nn
 from torch.nn import functional as F
 
-from defgrid.layers.DefGrid.diff_variance import LatticeVariance
-from defgrid.models.deformable_grid import DeformableGrid
-from defgrid.utils.matrix_utils import MatrixUtils
+from .models.deformable_grid import DeformableGrid
+from .utils.matrix_utils import MatrixUtils
+from .layers.DefGrid.diff_variance import LatticeVariance
+# from defgrid.utils.matrix_utils import MatrixUtils
 
 
 @ROI_MASK_HEAD_REGISTRY.register()
@@ -38,7 +39,8 @@ class DefGridHead(nn.Module):
         self.w_laplacian = cfg.MODEL.DEFGRID_MASK_HEAD.W_LAPLACIAN
         self.w_reconstruct_loss = cfg.MODEL.DEFGRID_MASK_HEAD.W_RECONSTRUCT_LOSS
 
-        self.matrix = MatrixUtils(1, self.grid_size, self.grid_type, self.device)
+        self.matrix = MatrixUtils(
+            1, self.grid_size, self.grid_type, self.device)
 
         self.model = DeformableGrid(cfg, self.device)
 
@@ -81,10 +83,13 @@ class DefGridHead(nn.Module):
         self.input_dict['base_normalized_point_adjacent'] = base_normalized_point_adjacent.expand(
             n_batch, -1, -1
         )
-        self.input_dict['base_point_mask'] = base_point_mask.expand(n_batch, -1, -1)
-        self.input_dict['base_triangle2point'] = base_triangle2point.expand(n_batch, -1, -1)
+        self.input_dict['base_point_mask'] = base_point_mask.expand(
+            n_batch, -1, -1)
+        self.input_dict['base_triangle2point'] = base_triangle2point.expand(
+            n_batch, -1, -1)
         self.input_dict['base_area_mask'] = base_area_mask.expand(n_batch, -1)
-        self.input_dict['base_triangle_mask'] = base_triangle_mask.expand(n_batch, -1)
+        self.input_dict['base_triangle_mask'] = base_triangle_mask.expand(
+            n_batch, -1)
         self.input_dict['grid_size'] = np.max(self.grid_size)
 
         output = self.model(**self.input_dict)
@@ -181,7 +186,8 @@ class DefGridHead(nn.Module):
             if len(instances_per_image) == 0:
                 continue
             if not cls_agnostic_mask:
-                gt_classes_per_image = instances_per_image.gt_classes.to(dtype=torch.int64)
+                gt_classes_per_image = instances_per_image.gt_classes.to(
+                    dtype=torch.int64)
                 gt_classes.append(gt_classes_per_image)
 
             gt_masks_per_image = instances_per_image.gt_masks.crop_and_resize(
@@ -211,12 +217,14 @@ class DefGridHead(nn.Module):
 
         # Log the training accuracy (using gt classes and 0.5 threshold)
         mask_incorrect = (pred_mask_logits > 0.0) != gt_masks_bool
-        mask_accuracy = 1 - (mask_incorrect.sum().item() / max(mask_incorrect.numel(), 1.0))
+        mask_accuracy = 1 - (mask_incorrect.sum().item() /
+                             max(mask_incorrect.numel(), 1.0))
         num_positive = gt_masks_bool.sum().item()
         false_positive = (mask_incorrect & ~gt_masks_bool).sum().item() / max(
             gt_masks_bool.numel() - num_positive, 1.0
         )
-        false_negative = (mask_incorrect & gt_masks_bool).sum().item() / max(num_positive, 1.0)
+        false_negative = (mask_incorrect & gt_masks_bool).sum(
+        ).item() / max(num_positive, 1.0)
 
         storage = get_event_storage()
         storage.put_scalar('mask_rcnn/accuracy', mask_accuracy)
@@ -230,7 +238,8 @@ class DefGridHead(nn.Module):
                 vis_mask = torch.stack([vis_mask] * 3, axis=0)
                 storage.put_image(name + f' ({idx})', vis_mask)
 
-        mask_loss = F.binary_cross_entropy_with_logits(pred_mask_logits, gt_masks, reduction='mean')
+        mask_loss = F.binary_cross_entropy_with_logits(
+            pred_mask_logits, gt_masks, reduction='mean')
         _, laplacian_loss, variance, area_variance, reconstruct_loss = self.defgrid_loss(
             output, gt_masks, net_input
         )

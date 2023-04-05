@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from defgrid.models.GNN import superpixel_grid
+from .GNN import superpixel_grid
 
 EPS = 1e-8
 

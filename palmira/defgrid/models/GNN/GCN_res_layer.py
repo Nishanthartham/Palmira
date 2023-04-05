@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torch.nn.modules.module import Module
 
-from defgrid.models.GNN.GCN_layer import GraphConvolution
+from .GCN_layer import GraphConvolution
 
 
 class GraphResConvolution(Module):

@@ -6,3 +6,5 @@ scipy
 scikit-image
 matplotlib
 tqdm
+opencv-python
+ninja

@@ -12,11 +12,11 @@ check_condition = load(
     sources=[
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/check_condition_lattice_bbox/check_condition_lattice_for2.cu',
+            'palmira/defgrid/layers/DefGrid/check_condition_lattice_bbox/check_condition_lattice_for2.cu',
         ),
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/check_condition_lattice_bbox/check_condition_lattice.cpp',
+            'palmira/defgrid/layers/DefGrid/check_condition_lattice_bbox/check_condition_lattice.cpp',
         ),
     ],
     verbose=True,
@@ -24,7 +24,9 @@ check_condition = load(
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-############################################3
+# 3
+
+
 class CheckCondition(Function):
 
     # Note that both forward and backward are @staticmethods
@@ -33,13 +35,15 @@ class CheckCondition(Function):
         n_batch = grid_bxkx3x2.shape[0]
         n_pixel = img_pos_bxnx2.shape[1]
         # Initialize condition with all negative at first
-        condition_bxnx1 = -torch.ones(n_batch, n_pixel, 1).float().to(grid_bxkx3x2.device)
+        condition_bxnx1 = - \
+            torch.ones(n_batch, n_pixel, 1).float().to(grid_bxkx3x2.device)
         top_left, _ = torch.min(grid_bxkx3x2, dim=2)
         top_left = top_left.unsqueeze(2)
         bottom_right, _ = torch.max(grid_bxkx3x2, dim=2)
         bottom_right = bottom_right.unsqueeze(2)
         bbox_bxkx2x2 = torch.cat([top_left, bottom_right], dim=2)
-        check_condition.forward(grid_bxkx3x2, img_pos_bxnx2, condition_bxnx1, bbox_bxkx2x2)
+        check_condition.forward(
+            grid_bxkx3x2, img_pos_bxnx2, condition_bxnx1, bbox_bxkx2x2)
         return condition_bxnx1
 
     @staticmethod

@@ -12,15 +12,15 @@ line_variance_parallel = load(
     sources=[
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/variance_function_atom/line_distance_func_parallel/variance_line_distance_for.cu',
+            'palmira/defgrid/layers/DefGrid/variance_function_atom/line_distance_func_parallel/variance_line_distance_for.cu',
         ),
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/variance_function_atom/line_distance_func_parallel/variance_line_distance_back.cu',
+            'palmira/defgrid/layers/DefGrid/variance_function_atom/line_distance_func_parallel/variance_line_distance_back.cu',
         ),
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/variance_function_atom/line_distance_func_parallel/variance_line_distance.cpp',
+            'palmira/defgrid/layers/DefGrid/variance_function_atom/line_distance_func_parallel/variance_line_distance.cpp',
         ),
     ],
     verbose=True,
@@ -30,8 +30,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 eps = 1e-8
 debug = False
 
-############################################3
+# 3
 # Inherit from Function
+
+
 class VarianceFunc(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
@@ -46,7 +48,8 @@ class VarianceFunc(Function):
         n_grid = grid_fea_bxkxd.shape[1]
         n_fea = grid_fea_bxkxd.shape[2]
         n_block = 1024
-        n_pixel_per_run = (1024 * 1024 * 128 / n_grid) + 1  # the buffer size is half GB
+        n_pixel_per_run = (1024 * 1024 * 128 / n_grid) + \
+            1  # the buffer size is half GB
         split_size = int(n_grid / n_block) + 1
         n_img_split = int(n_pixel / n_pixel_per_run) + 1
         n_pixel_per_run = int(n_pixel / n_img_split) + n_img_split - 1
@@ -62,7 +65,8 @@ class VarianceFunc(Function):
             device=grid_bxkx3x2.device,
             dtype=torch.float,
         )
-        variance_bxn = torch.zeros(n_batch, n_pixel, device=grid_bxkx3x2.device, dtype=torch.float)
+        variance_bxn = torch.zeros(
+            n_batch, n_pixel, device=grid_bxkx3x2.device, dtype=torch.float)
         # Buffer is used to save intermediate results, otherwise should apply memory in gpu.
         # we could also limit the size of buffer, to make it suitable for large image.
         buffer_1xnxk = torch.zeros(
@@ -102,13 +106,16 @@ class VarianceFunc(Function):
             buffer_1xnxdx4.zero_()
             for j in range(n_img_split - 1):  # all pixels before the last batch
                 line_variance_parallel.forward(
-                    img_fea_bxnxd[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(0),
+                    img_fea_bxnxd[i][j *
+                                     n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(0),
                     grid_fea_bxkxd[i].unsqueeze(0),
                     grid_bxkx3x2[i].unsqueeze(0),
-                    img_pos_bxnx2[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(0),
-                    variance_bxn[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(0),
+                    img_pos_bxnx2[i][j *
+                                     n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(0),
+                    variance_bxn[i][j *
+                                    n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(0),
                     sigma,
-                    reconstruct_img[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(
+                    reconstruct_img[i][j * n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(
                         0
                     ),
                     buffer_1xnxk,
@@ -117,31 +124,32 @@ class VarianceFunc(Function):
                     buffer_1xnxdx4,
                     split_size,
                 )
-                variance_bxn[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run] = buffer_1xnxk.sum(
+                variance_bxn[i][j * n_pixel_per_run: (j + 1) * n_pixel_per_run] = buffer_1xnxk.sum(
                     -1
                 ).squeeze()
             # last batch
             j = n_img_split - 1
             n_pixel_in_last = n_pixel - n_pixel_per_run * j
             line_variance_parallel.forward(
-                img_fea_bxnxd[i][j * n_pixel_per_run :].unsqueeze(0),
+                img_fea_bxnxd[i][j * n_pixel_per_run:].unsqueeze(0),
                 grid_fea_bxkxd[i].unsqueeze(0),
                 grid_bxkx3x2[i].unsqueeze(0),
-                img_pos_bxnx2[i][j * n_pixel_per_run :].unsqueeze(0),
-                variance_bxn[i][j * n_pixel_per_run :].unsqueeze(0),
+                img_pos_bxnx2[i][j * n_pixel_per_run:].unsqueeze(0),
+                variance_bxn[i][j * n_pixel_per_run:].unsqueeze(0),
                 sigma,
-                reconstruct_img[i][j * n_pixel_per_run :].unsqueeze(0),
+                reconstruct_img[i][j * n_pixel_per_run:].unsqueeze(0),
                 buffer_1xnxk[:, :n_pixel_in_last],
                 buffer_1xn[:, :n_pixel_in_last],
                 buffer_1xnx4[:, :n_pixel_in_last],
                 buffer_1xnxdx4[:, :n_pixel_in_last],
                 split_size,
             )
-            variance_bxn[i][j * n_pixel_per_run :] = (
+            variance_bxn[i][j * n_pixel_per_run:] = (
                 buffer_1xnxk[:, :n_pixel_in_last].sum(-1).squeeze()
             )
 
-        ctx.save_for_backward(img_fea_bxnxd, grid_fea_bxkxd, grid_bxkx3x2, img_pos_bxnx2, sigma)
+        ctx.save_for_backward(img_fea_bxnxd, grid_fea_bxkxd,
+                              grid_bxkx3x2, img_pos_bxnx2, sigma)
         return variance_bxn, reconstruct_img
 
     @staticmethod
@@ -155,7 +163,8 @@ class VarianceFunc(Function):
         dldreconstruct_img_bxnxd = dldreconstruct_img_bxnxd.contiguous()
 
         n_block = 1024
-        n_pixel_per_run = (1024 * 1024 * 128 / n_grid) + 1  # the buffer size is half GB
+        n_pixel_per_run = (1024 * 1024 * 128 / n_grid) + \
+            1  # the buffer size is half GB
         split_size = int(n_grid / n_block) + 1
         n_img_split = int(n_pixel / n_pixel_per_run) + 1
         n_pixel_per_run = int(n_pixel / n_img_split) + n_img_split - 1
@@ -192,16 +201,18 @@ class VarianceFunc(Function):
 
             for j in range(n_img_split - 1):  # all pixels before the last batch
                 line_variance_parallel.backward(
-                    dldvariance_bxn[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(
+                    dldvariance_bxn[i][j * n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(
                         0
                     ),
-                    img_fea_bxnxd[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(0),
+                    img_fea_bxnxd[i][j *
+                                     n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(0),
                     grid_fea_bxkxd[i].unsqueeze(0),
                     grid_bxkx3x2[i].unsqueeze(0),
-                    img_pos_bxnx2[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run].unsqueeze(0),
+                    img_pos_bxnx2[i][j *
+                                     n_pixel_per_run: (j + 1) * n_pixel_per_run].unsqueeze(0),
                     sigma[0].item(),
                     dldreconstruct_img_bxnxd[i][
-                        j * n_pixel_per_run : (j + 1) * n_pixel_per_run
+                        j * n_pixel_per_run: (j + 1) * n_pixel_per_run
                     ].unsqueeze(0),
                     buffer_1xnxk,
                     dldgrid_bxkx3x2[i].unsqueeze(0),
@@ -213,13 +224,13 @@ class VarianceFunc(Function):
             j = n_img_split - 1
             n_pixel_in_last = n_pixel - n_pixel_per_run * j
             line_variance_parallel.backward(
-                dldvariance_bxn[i][j * n_pixel_per_run :].unsqueeze(0),
-                img_fea_bxnxd[i][j * n_pixel_per_run :].unsqueeze(0),
+                dldvariance_bxn[i][j * n_pixel_per_run:].unsqueeze(0),
+                img_fea_bxnxd[i][j * n_pixel_per_run:].unsqueeze(0),
                 grid_fea_bxkxd[i].unsqueeze(0),
                 grid_bxkx3x2[i].unsqueeze(0),
-                img_pos_bxnx2[i][j * n_pixel_per_run :].unsqueeze(0),
+                img_pos_bxnx2[i][j * n_pixel_per_run:].unsqueeze(0),
                 sigma[0].item(),
-                dldreconstruct_img_bxnxd[i][j * n_pixel_per_run :].unsqueeze(0),
+                dldreconstruct_img_bxnxd[i][j * n_pixel_per_run:].unsqueeze(0),
                 buffer_1xnxk[:, :n_pixel_in_last],
                 dldgrid_bxkx3x2[i].unsqueeze(0),
                 buffer_1xn[:, :n_pixel_in_last],

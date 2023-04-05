@@ -27,9 +27,9 @@ from detectron2.evaluation import SemSegEvaluator
 from detectron2.evaluation import verify_results
 from detectron2.modeling import GeneralizedRCNNWithTTA
 
-from defgrid.config import add_defgrid_maskhead_config
+from palmira.defgrid.config import add_defgrid_maskhead_config
 # from hd.evaluator_perregion import HDEvaluator
-from hd.evaluator import HDEvaluator
+from palmira.hd.evaluator import HDEvaluator
 from palmira.indiscapes_dataset import register_dataset
 
 # from validation_hooks import EvalHook
@@ -74,18 +74,20 @@ class Trainer(DefaultTrainer):
                 )
             )
         if evaluator_type in ['coco', 'coco_panoptic_seg', 'indiscapes']:
-            evaluator_list.append(COCOEvaluator(dataset_name, cfg, True, output_folder))
+            evaluator_list.append(COCOEvaluator(
+                dataset_name, cfg, True, output_folder))
             evaluator_list.append(HDEvaluator(dataset_name))
         if evaluator_type == 'coco_panoptic_seg':
-            evaluator_list.append(COCOPanopticEvaluator(dataset_name, output_folder))
+            evaluator_list.append(COCOPanopticEvaluator(
+                dataset_name, output_folder))
         if evaluator_type == 'cityscapes_instance':
             assert (
-                    torch.cuda.device_count() >= comm.get_rank()
+                torch.cuda.device_count() >= comm.get_rank()
             ), 'CityscapesEvaluator currently do not work with multiple machines.'
             return CityscapesInstanceEvaluator(dataset_name)
         if evaluator_type == 'cityscapes_sem_seg':
             assert (
-                    torch.cuda.device_count() >= comm.get_rank()
+                torch.cuda.device_count() >= comm.get_rank()
             ), 'CityscapesEvaluator currently do not work with multiple machines.'
             return CityscapesSemSegEvaluator(dataset_name)
         elif evaluator_type == 'pascal_voc':
@@ -111,7 +113,8 @@ class Trainer(DefaultTrainer):
         model = GeneralizedRCNNWithTTA(cfg, model)
         evaluators = [
             cls.build_evaluator(
-                cfg, name, output_folder=os.path.join(cfg.OUTPUT_DIR, 'inference_TTA')
+                cfg, name, output_folder=os.path.join(
+                    cfg.OUTPUT_DIR, 'inference_TTA')
             )
             for name in cfg.DATASETS.TEST
         ]
@@ -173,7 +176,8 @@ def main(args):
     trainer.resume_or_load(resume=args.resume)
     if cfg.TEST.AUG.ENABLED:
         trainer.register_hooks(
-            [hooks.EvalHook(0, lambda: trainer.test_with_TTA(cfg, trainer.model))]
+            [hooks.EvalHook(
+                0, lambda: trainer.test_with_TTA(cfg, trainer.model))]
         )
     return trainer.train()
 

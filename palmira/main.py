@@ -1,10 +1,12 @@
 
-from defgrid.config import add_defgrid_maskhead_config
+from .defgrid.config import add_defgrid_maskhead_config
 from detectron2.config import get_cfg
-from predictor import VisualizationDemo
+from .predictor import VisualizationDemo
 from detectron2.data.detection_utils import read_image
+# import time
 
-def get_image(demo, path)
+
+def get_image(demo, path):
     # use PIL, to be consistent with evaluation
     img = read_image(path, format="BGR")
     start_time = time.time()
@@ -19,6 +21,7 @@ def get_image(demo, path)
             time.time() - start_time,
         )
     )
+
 
 def visualization_demo(cfg, input, output, window_name):
     demo = VisualizationDemo(cfg)

@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 
-from defgrid.models.GNN.GCN import GCN
+from .GCN import GCN
 
 
 def gather_feature(id, feature):
-    feature_id = id.unsqueeze_(2).long().expand(id.size(0), id.size(1), feature.size(2)).detach()
+    feature_id = id.unsqueeze_(2).long().expand(
+        id.size(0), id.size(1), feature.size(2)).detach()
 
     cnn_out = torch.gather(feature, 1, feature_id).float()
 
@@ -40,7 +41,8 @@ class DeformGNN(nn.Module):
         print('DeformGCN Initialization')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_in', nonlinearity='relu')
                 # m.weight.data.normal_(0.0, 0.00002)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
@@ -68,13 +70,16 @@ class DeformGNN(nn.Module):
         out_dict = {}
         shape = features.shape
         hw = shape[-2:]
-        tmp_features = features.reshape(shape[0], shape[1], -1)  # [None, 256, 196]
-        tmp_features = tmp_features.permute(0, 2, 1).contiguous()  # [None, 196, 256]
+        tmp_features = features.reshape(
+            shape[0], shape[1], -1)  # [None, 256, 196]
+        tmp_features = tmp_features.permute(
+            0, 2, 1).contiguous()  # [None, 196, 256]
         cnn_feature = self.interpolated_sum(
             [tmp_features], base_point, [hw]
         )  # [None, 400 (gridsize^2), 256]
 
-        input_feature = torch.cat((cnn_feature, base_point), 2)  # [None, 400 (gridsize^2), 258]
+        # [None, 400 (gridsize^2), 258]
+        input_feature = torch.cat((cnn_feature, base_point), 2)
 
         gcn_pred = self.gnn.forward(
             input_feature, base_normalized_point_adjacent
@@ -84,11 +89,15 @@ class DeformGNN(nn.Module):
         # gcn_pred = (torch.sigmoid(gcn_pred) - 0.5) * scale * 2
 
         enforced_gcn_pred = gcn_pred
-        gcn_pred_poly = base_point + enforced_gcn_pred[:, :, :2] * base_point_mask.squeeze(1)
+        gcn_pred_poly = base_point + \
+            enforced_gcn_pred[:, :, :2] * base_point_mask.squeeze(1)
 
-        laplacian_coord_1 = base_point - torch.bmm(base_normalized_point_adjacent, base_point)
-        laplacian_coord_2 = gcn_pred_poly - torch.bmm(base_normalized_point_adjacent, gcn_pred_poly)
-        laplacian_energy = ((laplacian_coord_2 - laplacian_coord_1) ** 2 + 1e-10).sum(-1).sqrt()
+        laplacian_coord_1 = base_point - \
+            torch.bmm(base_normalized_point_adjacent, base_point)
+        laplacian_coord_2 = gcn_pred_poly - \
+            torch.bmm(base_normalized_point_adjacent, gcn_pred_poly)
+        laplacian_energy = (
+            (laplacian_coord_2 - laplacian_coord_1) ** 2 + 1e-10).sum(-1).sqrt()
         laplacian_energy = laplacian_energy.mean(dim=-1)
         out_dict['laplacian_energy'] = laplacian_energy
 
