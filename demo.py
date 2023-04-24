@@ -77,9 +77,9 @@ if __name__ == "__main__":
 
     cfg = setup_cfg(args)
 
-    visualization_demo(cfg)
+    visualization_demo(cfg,args.input,args.output,WINDOW_NAME)
 
-    if args.input:
+"""    if args.input:
         if len(args.input) == 1:
             args.input = glob.glob(os.path.expanduser(args.input[0]))
             assert args.input, "The input path(s) was not found"
@@ -115,3 +115,5 @@ if __name__ == "__main__":
                     WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
                 if cv2.waitKey(0) == 27:
                     break  # esc to quit
+
+"""

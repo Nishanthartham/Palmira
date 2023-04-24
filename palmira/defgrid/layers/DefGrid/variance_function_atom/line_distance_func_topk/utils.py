@@ -12,15 +12,15 @@ line_variance_topk = load(
     sources=[
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/variance_function_atom/line_distance_func_topk/variance_line_distance_for.cu',
+            'palmira/defgrid/layers/DefGrid/variance_function_atom/line_distance_func_topk/variance_line_distance_for.cu',
         ),
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/variance_function_atom/line_distance_func_topk/variance_line_distance_back.cu',
+            'palmira/defgrid/layers/DefGrid/variance_function_atom/line_distance_func_topk/variance_line_distance_back.cu',
         ),
         os.path.join(
             base_path,
-            'defgrid/layers/DefGrid/variance_function_atom/line_distance_func_topk/variance_line_distance.cpp',
+            'palmira/defgrid/layers/DefGrid/variance_function_atom/line_distance_func_topk/variance_line_distance.cpp',
         ),
     ],
     verbose=True,
@@ -30,8 +30,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 eps = 1e-8
 debug = False
 
-############################################3
+# 3
 # Inherit from Function
+
+
 class VarianceFunc(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
@@ -45,7 +47,8 @@ class VarianceFunc(Function):
         n_pixel = img_pos_bxnx2.shape[1]
         n_grid = grid_fea_bxkxd.shape[1]
 
-        n_pixel_per_run = (1024 * 1024 * 128 / n_grid) + 1  # the buffer size is half GB
+        n_pixel_per_run = (1024 * 1024 * 128 / n_grid) + \
+            1  # the buffer size is half GB
         n_img_split = int(n_pixel / n_pixel_per_run) + 1
         n_pixel_per_run = int(n_pixel / n_img_split) + n_img_split - 1
 
@@ -62,7 +65,8 @@ class VarianceFunc(Function):
             device=grid_bxkx3x2.device,
             dtype=torch.float,
         )
-        variance_bxn = torch.zeros(n_batch, n_pixel, device=grid_bxkx3x2.device, dtype=torch.float)
+        variance_bxn = torch.zeros(
+            n_batch, n_pixel, device=grid_bxkx3x2.device, dtype=torch.float)
         top_k_grid = torch.zeros(
             n_batch, n_pixel, topk, device=grid_bxkx3x2.device, dtype=torch.long
         )
@@ -75,18 +79,21 @@ class VarianceFunc(Function):
             tmp_grid_pos = grid_center[i].unsqueeze(0)
             for j in range(n_img_split - 1):  # all pixels before the last batch
                 tmp_img_pos = img_pos_bxnx2[i][
-                    j * n_pixel_per_run : (j + 1) * n_pixel_per_run
+                    j * n_pixel_per_run: (j + 1) * n_pixel_per_run
                 ].unsqueeze(1)
                 dist = torch.abs(tmp_img_pos - tmp_grid_pos).sum(dim=-1)
-                _, tmp_topk = torch.topk(dist, k=topk, dim=1, sorted=False, largest=False)
-                top_k_grid[i][j * n_pixel_per_run : (j + 1) * n_pixel_per_run] = tmp_topk
+                _, tmp_topk = torch.topk(
+                    dist, k=topk, dim=1, sorted=False, largest=False)
+                top_k_grid[i][j *
+                              n_pixel_per_run: (j + 1) * n_pixel_per_run] = tmp_topk
 
             # last batch
             j = n_img_split - 1
-            tmp_img_pos = img_pos_bxnx2[i][j * n_pixel_per_run :].unsqueeze(1)
+            tmp_img_pos = img_pos_bxnx2[i][j * n_pixel_per_run:].unsqueeze(1)
             dist = torch.abs(tmp_img_pos - tmp_grid_pos).sum(dim=-1)
-            _, tmp_topk = torch.topk(dist, k=topk, dim=1, sorted=False, largest=False)
-            top_k_grid[i][j * n_pixel_per_run :] = tmp_topk
+            _, tmp_topk = torch.topk(
+                dist, k=topk, dim=1, sorted=False, largest=False)
+            top_k_grid[i][j * n_pixel_per_run:] = tmp_topk
 
         top_k_grid = top_k_grid.float()
         line_variance_topk.forward(

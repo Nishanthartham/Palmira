@@ -4,14 +4,14 @@ import sys
 import torch
 from torch.utils.cpp_extension import load
 
-base_path = os.getcwd()
+base_path = os.getcwd() 
 
-sys.path.append(os.path.join(base_path, 'defgrid/layers/DefGrid/mean_feature'))
+sys.path.append(os.path.join(base_path, 'palmira/defgrid/layers/DefGrid/mean_feature'))
 mean_feature_func = load(
     name='mean_feature',
     sources=[
-        os.path.join(base_path, 'defgrid/layers/DefGrid/mean_feature/mean_feature.cpp'),
-        os.path.join(base_path, 'defgrid/layers/DefGrid/mean_feature/mean_feature.cu'),
+        os.path.join(base_path, 'palmira/defgrid/layers/DefGrid/mean_feature/mean_feature.cpp'),
+        os.path.join(base_path, 'palmira/defgrid/layers/DefGrid/mean_feature/mean_feature.cu'),
     ],
     verbose=True,
 )

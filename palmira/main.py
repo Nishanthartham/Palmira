@@ -1,16 +1,23 @@
-
+import glob
+import os
+import argparse
 from .defgrid.config import add_defgrid_maskhead_config
 from detectron2.config import get_cfg
 from .predictor import VisualizationDemo
 from detectron2.data.detection_utils import read_image
-# import time
+import time
+import cv2
+import tqdm
+from detectron2.utils.logger import setup_logger
 
 
 def get_image(demo, path):
+    print(f'PATH,{os.getcwd()}{path}')
     # use PIL, to be consistent with evaluation
-    img = read_image(path, format="BGR")
+    img = read_image(f'{os.getcwd()}{path}', format="BGR")
     start_time = time.time()
     predictions, visualized_output = demo.run_on_image(img)
+    logger = setup_logger()
     logger.info(
         "{}: {} in {:.2f}s".format(
             path,
@@ -21,17 +28,18 @@ def get_image(demo, path):
             time.time() - start_time,
         )
     )
+    return visualized_output
 
 
 def visualization_demo(cfg, input, output, window_name):
     demo = VisualizationDemo(cfg)
 
     if input:
-        if len(input) == 1:
+        if len(input) == 0:
             input = glob.glob(os.path.expanduser(input[0]))
             assert input, "The input path(s) was not found"
         for path in tqdm.tqdm(input, disable=not output):
-            get_image(demo, path)
+            visualized_output = get_image(demo, path)
 
             if output:
                 if os.path.isdir(output):
@@ -42,7 +50,8 @@ def visualization_demo(cfg, input, output, window_name):
                     assert len(
                         input) == 1, "Please specify a directory with output"
                     out_filename = output
-                visualized_output.save(out_filename)
+                print(f'output path = {os.getcwd()}{out_filename}')
+                visualized_output.save(f'{os.getcwd()}{out_filename}')
             else:
                 cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
                 cv2.imshow(
