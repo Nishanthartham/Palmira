@@ -1,4 +1,4 @@
-torch
+torch==1.8.1
 # detectron2
 git+https://github.com/facebookresearch/detectron2.git@main#egg=detectron2
 medpy
